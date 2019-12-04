@@ -4,34 +4,98 @@ import numpy as np
 import math
 
 import datetime
+import time
 import os
+import sys
+
+import scanDir as clnfilss
+
+vdoRoot = 'recode'
 
 
-def main():
-    # =========================================================
-    boxRate = 0.001
-    # 設定影像尺寸
-    width = 1280
-    height = 720
-
-    # 計算畫面面積
-    #area = width * height
-
-    # min moving box
-    moveArea = math.ceil(width * height * boxRate)
-
-    maxVideoLengthMinut = 5
-    wattingMinut = 1
-
-    sNowDaytime = datetime.datetime.now()
-    endrecordTime = sNowDaytime+datetime.timedelta(minutes=-5)
-    maxVdoLenTime = sNowDaytime+datetime.timedelta(minutes=-5)
-
-    savedir = str(sNowDaytime.strftime('%Y%m%d')) + '/'
+def creatNewFilename():
+    insNow = datetime.datetime.now()
+    savedir = vdoRoot + '/' + str(insNow.strftime('%Y%m%d')) + '/'
     if not os.path.exists(savedir):
         os.makedirs(savedir)
 
-    saveVdo = savedir + str(sNowDaytime.strftime('%Y%m%d_%H%M%S')) + '.mp4'
+    saveVdo = savedir +       \
+        str(insNow.strftime('%Y%m%d_%H%M%S')) + '.mp4'
+    return saveVdo
+
+
+def getCameraFps(index):
+    # by default
+    outFps = 12.0
+    if index == 0:
+        # by system
+
+        video = cv2.VideoCapture(0)
+        (major_ver, minor_ver, subminor_ver) = (cv2.__version__).split('.')
+
+        if int(major_ver) < 3:
+            fps = video.get(cv2.cv.CV_CAP_PROP_FPS)
+            print(
+                "Frames per second using video.get(cv2.cv.CV_CAP_PROP_FPS): {0}".format(fps))
+        else:
+            fps = video.get(cv2.CAP_PROP_FPS)
+            print(
+                "Frames per second using video.get(cv2.CAP_PROP_FPS) : {0}".format(fps))
+
+        video.release()
+        cv2.destroyAllWindows()
+        outFps = fps
+
+    elif index == 1:
+        # by testing
+
+        video = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        #num_frames = 2*3*5*7
+        num_frames = 240
+
+        count = 0
+        start = time.time()
+
+        while(video.isOpened() and count < num_frames):
+            count = count + 1
+            tmppss = video.read()
+
+        end = time.time()
+
+        fps = count / (end-start)
+        print("******Estimated frames per second : {0} ******".format(fps))
+
+        # Release video
+        video.release()
+        cv2.destroyAllWindows()
+        outFps = math.floor(fps*10)/10
+
+    else:
+        # by user
+        outFps = 24.0
+
+    return outFps
+
+
+def main():
+    fpss = getCameraFps(-1)
+
+    # =========================================================
+    width = 1280
+    height = 720
+
+    boxRate = 0.001
+    # min moving box
+    moveArea = math.ceil(width * height * boxRate)
+
+    maxVideoLengthMinut = 30
+    wattingMinut = 5
+
+    sNowDaytime = datetime.datetime.now()
+    endrecordTime = sNowDaytime + datetime.timedelta(minutes=-5)
+    maxVdoLenTime = sNowDaytime + datetime.timedelta(minutes=-5)
+
+    cleanfile = True
 
     # =========================================================
     # blur ksize
@@ -51,10 +115,7 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
-    #fpss = cv2.videoCapture.get(cv2.CV_CAP_PROP_FPS)
-    fpss = 24.0
-
-    outVdo = cv2.VideoWriter(saveVdo, fourcc, fpss, (width, height))
+    #outVdo = cv2.VideoWriter(creatNewFilename(), fourcc, fpss, (width, height))
 
     # 初始化平均影像
     ret, frame = cap.read()
@@ -66,10 +127,6 @@ def main():
         # 讀取一幅影格
         ret, frame = cap.read()
 
-        # 若讀取至影片結尾，則跳出
-        if ret == False:
-            break
-
         # 模糊處理
         blur = cv2.blur(frame, ksize)
 
@@ -80,7 +137,7 @@ def main():
         gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
 
         # 篩選出變動程度大於門檻值的區域
-        ret, thresh = cv2.threshold(gray, 32, 255, cv2.THRESH_BINARY)
+        ret, thresh = cv2.threshold(gray, 16, 255, cv2.THRESH_BINARY)
 
         # 使用型態轉換函數去除雜訊
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
@@ -96,7 +153,7 @@ def main():
         for c in cnts:
             # 忽略太小的區域
             if cv2.contourArea(c) >= moveArea:
-                endrecordTime = datetime.datetime.now()+datetime.timedelta(minutes=wattingMinut)
+                endrecordTime = datetime.datetime.now() + datetime.timedelta(minutes=wattingMinut)
                 # 計算等高線的外框範圍
                 (x, y, w, h) = cv2.boundingRect(c)
                 # 畫出外框
@@ -105,16 +162,10 @@ def main():
         insNow = datetime.datetime.now()
         if(endrecordTime > insNow):
             if(maxVdoLenTime < insNow):
-                maxVdoLenTime = insNow + \
+                maxVdoLenTime = insNow +       \
                     datetime.timedelta(minutes=maxVideoLengthMinut)
-                savedir = str(insNow.strftime('%Y%m%d')) + '/'
-                if not os.path.exists(savedir):
-                    os.makedirs(savedir)
-
-                saveVdo = savedir + \
-                    str(insNow.strftime('%Y%m%d_%H%M%S')) + '.mp4'
                 outVdo = cv2.VideoWriter(
-                    saveVdo, fourcc, fpss, (width, height))
+                    creatNewFilename(), fourcc, fpss, (width, height))
 
             outVdo.write(frame)
 
@@ -124,6 +175,14 @@ def main():
         # 顯示偵測結果影像
         cv2.imshow('saveVdo', frame)
 
+        if int(round(insNow.second)) == int(round(0.0)) and cleanfile == True:
+            clnfilss.scanDir(vdoRoot)
+            # print(insNow)
+            # print(insNow.microsecond)
+            cleanfile = False
+        elif int(round(insNow.second)) == int(round(1.0)):
+            cleanfile = True
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
@@ -131,6 +190,7 @@ def main():
         cv2.accumulateWeighted(blur, avg_float, 0.01)
         avg = cv2.convertScaleAbs(avg_float)
 
+    # ==========================================================
     cap.release()
     outVdo.release()
     cv2.destroyAllWindows()
