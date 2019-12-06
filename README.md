@@ -9,6 +9,7 @@ libopencv  4.1.2,
 opencv     4.1.2, 
 py-opencv  4.1.2 conda-forge  
 
+conda install -c conda-forge py-opencv  
 pip install numpy  
 pip install matplotlib  
 pip install opencv-python  
