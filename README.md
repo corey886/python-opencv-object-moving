@@ -7,7 +7,7 @@ Python     3.7.5,
 python-vlc, 
 libopencv  4.1.2, 
 opencv     4.1.2, 
-py-opencv  4.1.2  
+py-opencv  4.1.2 conda-forge  
 
 pip install numpy  
 pip install matplotlib  
