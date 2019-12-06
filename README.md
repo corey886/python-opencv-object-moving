@@ -1,10 +1,18 @@
 # python-opencv-object-moving
-build from https://blog.gtwang.org/programming/opencv-motion-detection-and-tracking-tutorial/
+build from  
+https://blog.gtwang.org/programming/opencv-motion-detection-and-tracking-tutorial/  
+https://docs.opencv.org/4.1.2/dd/d43/tutorial_py_video_display.html
 
 Python     3.7.5, 
+python-vlc, 
 libopencv  4.1.2, 
 opencv     4.1.2, 
 py-opencv  4.1.2  
+
+pip install numpy  
+pip install matplotlib  
+pip install opencv-python  
+pip install python-vlc  
 
 Start recording when an object is detected  
 Stop recording when no object is detected in 5 minutes  
